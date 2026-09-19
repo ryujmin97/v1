@@ -163,3 +163,38 @@
 1. `ryu-v1`에서 순수 코드 분석 및 개발 진행
 2. 작업 결과를 `ryu-v1-note/docs/WORKLOG.md`에 기록
 3. 필요 시 `ryu-v1-note`의 지침을 갱신
+
+
+## 2026-09-19
+
+### 코드 분석 진행
+
+#### 분석 대상
+- `openpilot/selfdrive/ui/onroad/hud_renderer.py`
+- `openpilot/system/ui/lib/text_draw.py`
+- `openpilot/system/ui/lib/text_measure.py`
+
+#### 확인된 핵심 내용
+- `sdi_descr` 교통정보 배지는 `_draw_turn_info_hud()`에서 별도 초록색 배지로 렌더링된다.
+- 현재 배지 위치는 `badge_y = by + 115 + 20`이며, 회전 아이콘 초록박스와 20px 간격을 둔다.
+- 현재 배지 높이는 `max(48, size.y + 20)`이다.
+- `draw_text_ui_style()`의 `left_center`는 내부적으로 `draw_y = y + y_offset - text_size.y / 2`를 사용하고 기본 `y_offset=6`이다.
+- 따라서 현재 코드의 `text_center_y = badge_y + badge_h / 2 - 6`은 실제 draw 좌표에서 텍스트 중심이 배지 중심에 오도록 의도적으로 6px을 상쇄한다.
+- 이전 구현의 `left_bottom` baseline 계산은 `draw_text_ui_style`의 좌표 의미와 맞지 않아 배지 내부 수직 위치가 어긋날 가능성이 있었고, 커밋 `d5c91ab0`에서 `left_center` 방식으로 변경됐다.
+
+#### 관련 변경 이력
+- `de42c399`: 교통정보 배지 분리 시작
+- `700cbfdd`: 독립 배지 렌더링 추가
+- `fe08c129`: 배지 위치/레이아웃 조정
+- `c28bb2c`: 배지 내부 중앙 정렬 시도
+- `d5c91ab0`: `left_center` + 6px y-offset 보정으로 수정
+- 실제 차량/화면 렌더링 검증은 아직 수행하지 않음.
+
+#### 분석 판단
+현재 `d5c91ab0`의 좌표 계산은 `text_draw.py`의 실제 정렬 구현과 일치한다. 다만 `measure_text_cached()`의 높이와 실제 glyph 시각적 중심이 완전히 동일하다고 보장할 수 없으므로 최종 판단은 실제 렌더링 또는 캡처 비교가 필요하다.
+
+#### 다음 분석
+- `_draw_turn_info_hud()` 전체 좌표 체계와 다른 하단 요소와의 충돌 여부 확인
+- `sdi_descr`가 생성되는 원천 데이터 및 SDI type/road name fallback 흐름 추적
+- 관련 테스트 존재 여부 및 UI 렌더 테스트 가능 여부 확인
+- 코드 변경 없이 구조 분석을 우선 진행
